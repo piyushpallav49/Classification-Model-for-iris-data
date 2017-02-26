@@ -1,0 +1,93 @@
+---
+title: "Iris data Classification (SVM)"
+author: "Piyush Pallav"
+date: "26 February 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Here we will look at the famous iris Dataset and try to classify the its Species based on the given parameters. The dataset has been broken into two groups: *training set* and *test set* with split ratio being 80:20.
+
+### Loading the dependent library and Dataset
+```{r libraries, warning=FALSE}
+library(caTools)
+library(ggplot2)
+library(GGally)
+library(e1071)
+```
+
+We will use **caTools** for Dataset spliting into training & test set.
+
+**ggplot2** and **GGally** will be used for Visualization.
+
+**e1071** will be used for Support Vector Classification.
+
+```{r dataset, warning=FALSE}
+dataset = iris
+```
+
+### Exploring the dataset
+```{r summary}
+str(dataset)
+summary(dataset)
+```
+
+We will use *sepal length*, *sepal width*, *petal length* and *petal width* to predict the *species* of Flower.
+
+### Spliting data into training set and test set
+```{r splitting}
+split = sample.split(dataset$Species, SplitRatio = .8)
+training_set = subset(dataset, split == TRUE)
+test_set = subset(dataset, split == FALSE)
+
+nrow(training_set)
+nrow(test_set)
+```
+
+We have 120 data points on which we will train our model and then we will use 30 data points to test the model on.
+
+### Exploratory Visualization
+
+Lets have a closer look at the parameters and judge before hand if a good model can be created or not.
+
+```{r visual, warning=FALSE}
+ggpairs(training_set, ggplot2::aes(colour = Species, alpha = 0.4))
+```
+
+I personally like this graph because you can deduce so much information from one single chart. Lets have a look!
+
+We can clearly see from the Histograms of *Petal.length* and *Petal.width* that we can clearly seperate out *Setosa* species with very high confidence.
+
+However, *Versicolor* and *Virginica* Species are overlapped. If we look at the scatterplot of *Sepal.Length* vs *Petal.Length* and *Petal.Width* vs *Petal.Length*, we can distintly see a seperator that can be draw between the groups of Species. 
+
+Looks like we can just use *Petal.Width* and *Petal.Length* as parameters and come with a good model. SVM seems to be a very good model for this type of data. Lets create two model, one contains all parameter and second contain just *Petal.Width* and *Petal.Length* as parameter and compare their individual performances. 
+
+### Feature Scaling and Model Fiting
+
+```{r feature scale}
+training_set[,1:4] = scale(training_set[,1:4])
+test_set[,1:4] = scale(test_set[,1:4])
+
+classifier1 = svm(formula = Species~., data = training_set, type = 'C-classification', kernel = 'radial')
+classifier2 = svm(formula = Species~ Petal.Width + Petal.Length, data = training_set, type = 'C-classification', kernel = 'radial')
+```
+
+Here classifier1 uses all the parameter to make model while *classifier2* just uses Petal's Legth and Width to generate model.
+
+### Prediction and Evaluation
+
+```{r pred}
+test_pred1 = predict(classifier1, type = 'response', newdata = test_set[-5])
+test_pred2 = predict(classifier2, type = 'response', newdata = test_set[-5])
+
+# Making Confusion Matrix
+cm1 = table(test_set[,5], test_pred1)
+cm2 = table(test_set[,5], test_pred2)
+cm1 # Confusion Matrix for all parameters
+cm2 # Confusion Matrix for parameters being Petal Length and Petal Width
+```
+
+Wow, the accuracy for both model looks solid. Also notice that as we had deduced, only *Petal* Length and Width is important to make this model accurate and our second classifier proves it!
